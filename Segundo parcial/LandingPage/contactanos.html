@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contáctanos — Aidora</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="encabezado-contacto">
+    <h1 id="titulo-contacto">Contáctanos</h1>
+    <p id="subtitulo-contacto">Habla con el equipo de desarrollo de Aidora</p>
+  </header>
+
+  <nav id="navegacion-contacto">
+    <a id="nav-contacto-inicio" href="index.html">Inicio</a>
+    <a id="nav-contacto-nosotros" href="nosotros.html">Nosotros</a>
+    <a id="nav-contacto-proyectos" href="proyectos.html">Proyectos</a>
+    <a id="nav-contacto-contacto" href="contactanos.html">Contáctanos</a>
+  </nav>
+
+  <main id="principal-contacto">
+    <form id="formulario-contacto" action="#" method="post" aria-labelledby="titulo-formulario" novalidate>
+      <h2 id="titulo-formulario">Formulario de contacto</h2>
+      <p id="instrucciones-formulario">Completa los datos esenciales para que el equipo de programadores pueda comunicarse contigo.</p>
+
+      <label for="nombre-completo">Nombre completo (obligatorio)</label>
+      <input id="nombre-completo" name="nombre_completo" type="text" required placeholder="Ej. María López" />
+
+      <label for="correo-electronico">Correo electrónico (obligatorio)</label>
+      <input id="correo-electronico" name="correo_electronico" type="email" required placeholder="ejemplo@correo.com" />
+
+      <div id="fila-telefono">
+        <div id="col-telefono">
+          <label for="telefono-whatsapp">Teléfono / WhatsApp</label>
+          <input id="telefono-whatsapp" name="telefono_whatsapp" type="tel" placeholder="55 1234 5678" />
+        </div>
+      </div>
+
+      <label for="tipo-usuario">¿Eres?</label>
+      <select id="tipo-usuario" name="tipo_usuario">
+        <option value="paciente">Paciente / Familiar</option>
+        <option value="donante">Donante</option>
+        <option value="organizacion">Organización / ONG</option>
+        <option value="otro">Otro</option>
+      </select>
+
+      <label for="mensaje-consulta">Mensaje / Comentarios (obligatorio)</label>
+      <textarea id="mensaje-consulta" name="mensaje_consulta" required placeholder="Cuéntanos brevemente tu situación o consulta"></textarea>
+
+      <label for="consentimiento">
+        <input id="consentimiento" name="consentimiento" type="checkbox" required />
+        Acepto que el equipo de Aidora me contacte para dar seguimiento a esta solicitud.
+      </label>
+
+      <p id="nota-privacidad">Solo usaremos tus datos para responder a esta consulta. No compartimos información sin tu consentimiento.</p>
+
+      <div id="acciones-formulario">
+        <button id="boton-enviar" type="submit">Enviar mensaje</button>
+      </div>
+    </form>
+
+    <section id="contacto-directo">
+      <h3 id="titulo-contacto-directo">Contacto directo</h3>
+      <p id="parrafo-contacto-directo">Si prefieres, escribe a: <strong>equipo@aidora.org</strong> (correo de ejemplo) o visita nuestra página principal.</p>
+    </section>
+  </main>
+
+  <footer id="pie-pagina-contacto">
+    <p id="datos-escuela-contacto"><strong>CECYT #9 "Juan de Dios Batiz"</strong>, Instituto Politécnico Nacional</p>
+    <p id="copyright-contacto">&copy; 2026 Los gatos durmientes — Aidora</p>
+  </footer>
+  <button type="button" id="btn-regreso" class="btn-regreso"
+            onclick="location.href='../../../index.html'">
+            Volver al inicio
+        </button>
+        </header>
+</body>
+</html>
