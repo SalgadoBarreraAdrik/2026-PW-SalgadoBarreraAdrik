@@ -1,0 +1,111 @@
+* {
+    box-sizing: border-box;
+}
+body{
+    margin: 5px;
+    font-family: "Lucida Console", Courier, monospace;
+    color: #d6363B;
+    background-color: #001c05;
+}
+ 
+header{
+    background-color: #135e96;
+    color: #646970;
+    padding: 2rem;
+    text-align: center;
+}
+ 
+header a{
+    color: #996800;
+}
+ 
+main{
+    max-width: 1000px;
+    margin: 4rem auto;
+    padding: 1rem;
+}
+footer{
+    text-align: center;
+    padding: 2rem;
+    color: #afeeee;
+    font-size: 1rem;
+}
+/*Catálogo de talleres */
+ 
+.catálogo{
+    display: grid;
+    grid-template-columns: repeat(3,1fr);/*Mete tres columnas por fila*/
+    gap: 1.5rem;
+    background-color: #1da710;
+}
+ 
+.tarjeta{
+    background-color: #a11818;
+    border-radius: 1rem;
+    padding: 0.5rem;
+    text-align: center;
+}
+ 
+.tarjeta h2{
+    margin-top: 0%;
+    font-size: 1.25rem;
+}
+.tarjeta a{
+    color: #98FB98;
+    text-decoration: none;
+}
+/*Hover sirve para cuando pasas el mouse en un elemento gráfico*/
+.tarjeta a:hover{
+    text-decoration: underline;
+    color: #DA70D6;
+}
+.container{
+    text-align: center;
+    border-radius: 5rem;
+    padding: 0;  
+    margin: 10px;
+    background-color: #778899;
+}
+h1{
+    color: #0d7724;
+}
+p{
+    color: #741c5e;
+}
+td{
+    color: #118f41;
+    padding: 100px;
+}
+th{
+    color: #8f0c28;
+}
+table{
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+button{
+    background-color: #6d1d1d;
+    color: #a9ac05;
+    border-radius: 5rem;
+    border: 5px solid #038d58;
+    padding: 2px;
+}
+
+button:hover{
+    color: #3a6b61;
+}
+
+.registro_form{
+    align-items: center;
+    text-align: center;
+}
+
+input{
+    border-radius: 20px;
+    border: #381a1a;
+}
+
+.potrocolor{
+    color: #1b0101;
+}
