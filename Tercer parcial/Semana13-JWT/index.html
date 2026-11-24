@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semana 13 · JWT</title>
+    <link rel="stylesheet" href="../documentacion.css">
+</head>
+<body>
+    <header>
+        <h1>Semana 13 · Implementación de JWT</h1>
+        <p>Validaciones y manejo de sesión con JSON Web Token · Salgado Barrera Adrik</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Qué se hizo</h2>
+            <ol>
+                <li>
+                    <strong>Demo guiada «De la sesión al JWT»</strong> (<code>demo-jwt/</code>): pasos 1 a 7 programados en
+                    <code>app.js</code> y <code>modelos/tokens.modelo.js</code>:
+                    <code>firmarToken</code> (HS256, <code>sub</code>, <code>jti</code>, <code>exp</code>),
+                    <code>requiereJWT</code> (401 sin token / inválido / expirado / revocado),
+                    <code>requiereRolJWT</code> (403), <code>POST /api/jwt/refresh</code> y lista negra en
+                    <code>tokens_revocados</code>. <code>npm run probar</code>: <span class="ok">41 de 41 pruebas pasaron</span>.
+                </li>
+                <li>
+                    <strong>Integradora</strong> (<code>integradora/</code>): se reemplazó la sesión simple del Parcial 2 por JWT.
+                    <ul>
+                        <li><code>backend/</code>: Express + MySQL (<code>cecyt9_local</code>). <code>POST /api/login</code> emite el JWT,
+                            <code>middleware/jwt.middleware.js</code> lo verifica y protege <strong>todo</strong> el CRUD de
+                            <code>/api/usuarios</code> (leer: cualquier token válido; crear/editar/borrar: solo admin).
+                            Renovación con <code>POST /api/refresh</code>. <code>npm run probar</code>:
+                            <span class="ok">21 de 21 pruebas pasaron</span>.</li>
+                        <li><code>mini-proyecto-next/</code>: <code>pages/login.js</code> guarda el token,
+                            <code>lib/fetchConToken.js</code> lo manda en <code>Authorization</code> y
+                            <code>pages/admin/usuarios.js</code> usa <code>fetchConToken</code> (sin <code>credentials</code>);
+                            si la respuesta es 401 borra el token y manda a <code>/login</code>. Si al token le queda menos de
+                            1 minuto lo renueva antes de la petición.</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Pruebas manuales de acceso con y sin token (integradora)</h2>
+            <p>Hechas con <code>curl</code> contra <code>http://localhost:3001</code> (también se pueden hacer en Postman con
+                <em>Authorization → Bearer Token</em>).</p>
+            <div class="tabla-scroll">
+                <table>
+                    <thead><tr><th>#</th><th>Petición</th><th>Token</th><th>Resultado</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td><code>POST /api/login</code> admin semilla</td><td>—</td>
+                            <td><span class="ok">200</span> <code>{"token":"eyJhbGciOiJIUzI1NiIs…","usuario":{…}}</code>, sin <code>Set-Cookie</code></td></tr>
+                        <tr><td>2</td><td><code>POST /api/login</code> contraseña mala</td><td>—</td>
+                            <td><span class="e401">401</span> <code>{"error":"Correo o contraseña incorrectos"}</code></td></tr>
+                        <tr><td>3</td><td><code>GET /api/usuarios</code></td><td>Sin token</td>
+                            <td><span class="e401">401</span> <code>{"error":"Falta el token (encabezado Authorization: Bearer ...)"}</code></td></tr>
+                        <tr><td>4</td><td><code>GET /api/usuarios</code></td><td>Válido</td>
+                            <td><span class="ok">200</span> <code>[{"id":1,"nombre":"Admin Semilla",…}]</code> (sin <code>contrasena_hash</code>)</td></tr>
+                        <tr><td>5</td><td><code>GET /api/usuarios</code></td><td>Firma alterada</td>
+                            <td><span class="e401">401</span> <code>{"error":"Token inválido"}</code></td></tr>
+                        <tr><td>6</td><td><code>GET /api/usuarios</code></td><td>Expirado</td>
+                            <td><span class="e401">401</span> <code>{"error":"Token expirado: vuelve a iniciar sesión"}</code></td></tr>
+                        <tr><td>7</td><td><code>DELETE /api/usuarios/:id</code></td><td>Válido de alumno</td>
+                            <td><span class="e403">403</span> <code>{"error":"Solo admin puede hacer esto"}</code></td></tr>
+                        <tr><td>8</td><td><code>POST /api/usuarios</code></td><td>Sin token</td>
+                            <td><span class="e401">401</span> (no se crea nada)</td></tr>
+                        <tr><td>9</td><td><code>POST /api/refresh</code></td><td>Válido</td>
+                            <td><span class="ok">200</span> <code>{"token":"eyJ…"}</code> nuevo (otro <code>jti</code>)</td></tr>
+                        <tr><td>10</td><td>Página <code>/admin/usuarios</code></td><td>Sin token o alterado</td>
+                            <td>Redirige a <code>/login</code> y borra el token de <code>localStorage</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <img src="evidencias/integradora-crud-con-token.png" alt="Página de administración de usuarios funcionando con el token del admin">
+        </section>
+
+        <section>
+            <h2>Demo: 401 / 403 / 200 con JWT</h2>
+            <table>
+                <thead><tr><th>Situación</th><th>Código</th><th>¿Qué significa?</th></tr></thead>
+                <tbody>
+                    <tr><td>Sin token</td><td class="e401">401</td><td>No hay token: el servidor no sabe quién eres.</td></tr>
+                    <tr><td>Con token de ana</td><td class="e403">403</td><td>El token es válido y dice rol alumno: no alcanza para admin.</td></tr>
+                    <tr><td>Con token de admin</td><td class="ok">200</td><td>Token válido y rol admin dentro del payload.</td></tr>
+                </tbody>
+            </table>
+            <p><code>requiereJWT</code> va antes que <code>requiereRolJWT</code>: si se invirtieran, alguien sin token
+                llegaría a leer <code>req.jwt.rol</code> sin que exista (error 500) en lugar de recibir un 401.</p>
+            <img src="evidencias/demo-jwt-token-ana.png" alt="Demo de JWT con el token de ana decodificado y la bitácora con 200, 401 y 403">
+        </section>
+
+        <section>
+            <h2>Sesión contra JWT</h2>
+            <div class="tabla-scroll">
+                <table>
+                    <thead><tr><th>Pregunta</th><th>Sesión (semana 12)</th><th>JWT (semana 13)</th></tr></thead>
+                    <tbody>
+                        <tr><td>¿Qué guarda el servidor?</td><td>Una fila en <code>sessions</code></td><td>Nada (solo el secreto); con lista negra, el <code>jti</code> de los tokens revocados</td></tr>
+                        <tr><td>¿Qué lleva el navegador?</td><td>Una cookie con un id firmado</td><td>El token completo (cabecera.payload.firma) en <code>localStorage</code></td></tr>
+                        <tr><td>¿Quién lo manda en cada petición?</td><td>El navegador, solo</td><td>Nuestro código (<code>Authorization: Bearer</code>)</td></tr>
+                        <tr><td>¿Dónde está el rol?</td><td>En el servidor</td><td>Dentro del payload, firmado</td></tr>
+                        <tr><td>¿Y si reinicio el servidor?</td><td>Depende del almacén</td><td>El token sigue sirviendo (sin estado)</td></tr>
+                        <tr><td>¿Cerrar sesión lo invalida?</td><td>Sí (<code>destroy</code>)</td><td>No, hasta que vence… salvo con lista negra</td></tr>
+                        <tr><td>¿Lo puede leer el JavaScript?</td><td>No (<code>httpOnly</code>)</td><td>Sí: un XSS podría robarlo</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>Filas nuevas para la matriz de riesgos</h2>
+            <div class="tabla-scroll">
+                <table>
+                    <thead><tr><th>Amenaza</th><th>Qué lo hace posible</th><th>Control</th></tr></thead>
+                    <tbody>
+                        <tr><td>Robo del token</td><td>Quien tiene el token es el usuario; no pide contraseña</td><td>Expiración corta (<code>exp</code>), HTTPS, lista negra al cerrar sesión</td></tr>
+                        <tr><td>Token alterado (cambiar el rol)</td><td>El payload solo va en base64url y se puede editar</td><td>Firma HS256 verificada con <code>jwt.verify</code> → 401 «Token inválido»</td></tr>
+                        <tr><td>Secreto filtrado</td><td>Subir <code>.env</code> a GitHub; con el secreto se fabrican tokens de admin</td><td><code>.env</code> en <code>.gitignore</code>, secreto largo, rotarlo (invalida todos los tokens)</td></tr>
+                        <tr><td>Token vivo después del logout</td><td>El servidor no guarda nada; el logout solo borra el token del navegador</td><td>Lista negra por <code>jti</code> (<code>tokens_revocados</code>) y tokens de vida corta</td></tr>
+                        <tr><td>XSS que lee <code>localStorage</code></td><td>El token es visible para cualquier script de la página</td><td>No usar <code>innerHTML</code> con datos, CSP, o guardar el token en cookie <code>httpOnly</code></td></tr>
+                        <tr><td>Ataque <code>alg: none</code></td><td>Librerías que aceptaban tokens sin firma</td><td><code>algorithms: ['HS256']</code> en <code>jwt.verify</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>Preguntas de cierre</h2>
+            <ol>
+                <li><strong>¿Por qué el payload se puede leer pero no cambiar?</strong> Porque solo está codificado en base64url
+                    (no cifrado), pero la firma se calcula sobre la cabecera y el payload con el secreto del servidor. Si cambias
+                    una letra, la firma ya no coincide y <code>jwt.verify</code> lo rechaza; para volver a firmar hace falta el secreto.</li>
+                <li><strong>Si a ana le quitan el rol de admin, ¿cuándo se entera su token?</strong> En la demo, hasta que vence:
+                    el rol va dentro del token. Con el refresh de la demo tampoco, porque copia el rol del token viejo. En la
+                    integradora, el refresh vuelve a leer al usuario de la BD, así que el token nuevo ya trae el rol actualizado
+                    (y si el usuario fue borrado, el refresh responde 401).</li>
+                <li><strong>¿Qué hace el frontend con un 401?</strong> Borra el token de <code>localStorage</code> y manda a
+                    <code>/login</code>, porque el token ya no sirve (falta, está alterado, venció o fue revocado).</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Cómo correrlo</h2>
+<pre># Demo JWT
+cd "Tercer parcial/Semana13-JWT/demo-jwt"
+npm install && cp .env.example .env     # DB_PASSWORD y JWT_SECRET
+npm run bd && npm start                 # http://localhost:4600/jwt.html
+npm run probar                          # 41 de 41
+
+# Integradora: backend
+cd "Tercer parcial/Semana13-JWT/integradora/backend"
+npm install && cp .env.example .env     # DB_PASSWORD y JWT_SECRET
+mysql -u root -p &lt; schema-completo-mysql.sql
+npm start                               # http://localhost:3001
+npm run probar                          # 21 de 21
+
+# Integradora: frontend
+cd "../mini-proyecto-next"
+npm install && npm run dev              # http://localhost:3000/login
+# admin@cecyt9.ipn.mx / CambiaEstaClave123</pre>
+        </section>
+
+        <a class="regresar" href="../../index.html">← Regresar al portafolio</a>
+    </main>
+</body>
+</html>
