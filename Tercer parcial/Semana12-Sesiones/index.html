@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semana 12 · Matriz de riesgos</title>
+    <link rel="stylesheet" href="../documentacion.css">
+</head>
+<body>
+    <header>
+        <h1>Semana 12 · Análisis de riesgos del login</h1>
+        <p>Gestión de riesgos, controles y frameworks de ciberseguridad · Salgado Barrera Adrik</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Objetivo</h2>
+            <p>
+                Identificar qué riesgos tiene el login actual del sistema CECyT9 (usuario/contraseña con sesión simple,
+                <strong>sin JWT</strong>) antes de implementar JWT en la semana 13, y proponer controles.
+                Como base se programó la demo <code>demo-sesiones/</code>: el servidor con <code>express-session</code>
+                guardando las sesiones en MySQL (tabla <code>sessions</code>) y la página <code>public/demo.js</code>.
+            </p>
+            <ul>
+                <li><code>demo-sesiones/app.js</code>: pasos 1 a 7 de la clase (configuración de la sesión, login con
+                    <code>regenerate</code>, logout con <code>destroy</code>, <code>requiereSesion</code> (401),
+                    <code>requiereRol</code> (403) y <code>vencida()</code>).</li>
+                <li><code>demo-sesiones/public/demo.js</code>: escrito y comentado por mí (usa <code>textContent</code>
+                    para todo lo que viene del servidor).</li>
+                <li><code>npm run probar</code>: <span class="ok">21 de 21 pruebas pasaron</span>.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Matriz de riesgos del login actual</h2>
+            <p>Escala: probabilidad e impacto de 1 (bajo) a 3 (alto). Riesgo = probabilidad × impacto
+                (1-2 bajo, 3-4 medio, 6-9 alto).</p>
+            <div class="tabla-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Amenaza</th>
+                            <th>Cómo pasa en el login actual</th>
+                            <th>Probabilidad</th>
+                            <th>Impacto</th>
+                            <th>Riesgo</th>
+                            <th>Control propuesto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>R1</td>
+                            <td>Fuerza bruta / adivinar contraseñas</td>
+                            <td>El endpoint de login acepta intentos ilimitados; un script puede probar miles de contraseñas.</td>
+                            <td>3</td><td>3</td><td class="alta">9 · Alto</td>
+                            <td>Límite de intentos por IP/usuario (ej. 5 en 15 min) con bloqueo temporal, captcha después de
+                                varios fallos (semana 14), contraseñas de 8+ caracteres y hash con bcrypt.</td>
+                        </tr>
+                        <tr>
+                            <td>R2</td>
+                            <td>Secuestro de sesión (robo de la cookie)</td>
+                            <td>Quien copia <code>connect.sid</code> entra sin contraseña (prueba P-11: el atacante recibió 200 «Hola, Ana López»).</td>
+                            <td>2</td><td>3</td><td class="alta">6 · Alto</td>
+                            <td>Cookie <code>httpOnly</code> + <code>secure</code> (HTTPS) + <code>sameSite</code>; expiración corta;
+                                logout que destruya la sesión en el servidor; en la semana 13, JWT con expiración corta y lista negra.</td>
+                        </tr>
+                        <tr>
+                            <td>R3</td>
+                            <td>XSS que roba la sesión</td>
+                            <td>Si la página mete datos del servidor con <code>innerHTML</code>, un nombre con <code>&lt;script&gt;</code>
+                                se ejecuta; con <code>httpOnly: false</code> el script lee <code>document.cookie</code> (P-09).</td>
+                            <td>2</td><td>3</td><td class="alta">6 · Alto</td>
+                            <td>Usar <code>textContent</code> (o React, que escapa), validar y sanear entradas, mantener
+                                <code>httpOnly: true</code>, cabecera Content-Security-Policy.</td>
+                        </tr>
+                        <tr>
+                            <td>R4</td>
+                            <td>Fijación de sesión</td>
+                            <td>Con <code>regenerarAlEntrar: false</code> el id no cambia al entrar; el atacante planta su id y queda
+                                dentro como la víctima (P-13).</td>
+                            <td>1</td><td>3</td><td class="media">3 · Medio</td>
+                            <td><code>req.session.regenerate()</code> al iniciar sesión (P-14: el atacante recibe 401).</td>
+                        </tr>
+                        <tr>
+                            <td>R5</td>
+                            <td>Sesión que no vence</td>
+                            <td>Sin <code>maxAge</code> o con <code>rolling</code> mal entendido, una cookie robada sirve indefinidamente.</td>
+                            <td>2</td><td>2</td><td class="media">4 · Medio</td>
+                            <td>Vencimiento decidido por el servidor (<code>vencida()</code>), <code>maxAge</code> corto;
+                                con JWT, <code>exp</code> corto + renovación (<code>refresh</code>) solo con token válido.</td>
+                        </tr>
+                        <tr>
+                            <td>R6</td>
+                            <td>Enumeración de usuarios</td>
+                            <td>Si el login respondiera distinto para «usuario no existe» y «contraseña mala», se podrían descubrir cuentas.</td>
+                            <td>2</td><td>1</td><td class="baja">2 · Bajo</td>
+                            <td>Mismo mensaje y mismo código (401 «Usuario o contraseña incorrectos») en los dos casos (P-03).</td>
+                        </tr>
+                        <tr>
+                            <td>R7</td>
+                            <td>Credenciales o secretos en el repositorio</td>
+                            <td>Subir el <code>.env</code> con la contraseña de MySQL o el <code>SESSION_SECRET</code> a GitHub.</td>
+                            <td>2</td><td>3</td><td class="alta">6 · Alto</td>
+                            <td><code>.env</code> en <code>.gitignore</code>, solo se sube <code>.env.example</code>; secretos largos y distintos por ambiente.</td>
+                        </tr>
+                        <tr>
+                            <td>R8</td>
+                            <td>Contraseñas expuestas si se filtra la BD</td>
+                            <td>Guardar contraseñas en texto plano o devolver el hash en las respuestas.</td>
+                            <td>1</td><td>3</td><td class="media">3 · Medio</td>
+                            <td>bcrypt con costo 10; el modelo nunca devuelve <code>contrasena_hash</code> (solo lo usa el login).</td>
+                        </tr>
+                        <tr>
+                            <td>R9</td>
+                            <td>Acceso a rutas de admin con otro rol</td>
+                            <td>Un alumno con sesión válida intenta <code>/api/admin/reporte</code>.</td>
+                            <td>2</td><td>2</td><td class="media">4 · Medio</td>
+                            <td>Middleware de rol que responde 403 (P-07), siempre después del de sesión (401).</td>
+                        </tr>
+                        <tr>
+                            <td>R10</td>
+                            <td>CSRF (petición desde otro sitio)</td>
+                            <td>Otro sitio hace que el navegador mande la cookie de sesión en un POST.</td>
+                            <td>1</td><td>2</td><td class="baja">2 · Bajo</td>
+                            <td><code>sameSite: 'lax'</code> (o <code>'strict'</code>); con JWT en <code>Authorization</code> el
+                                token no viaja solo.</td>
+                        </tr>
+                        <tr>
+                            <td>R11</td>
+                            <td>Sesiones perdidas al reiniciar o escalar</td>
+                            <td>Con el almacén en memoria, un reinicio cierra la sesión de todos (P-15).</td>
+                            <td>2</td><td>1</td><td class="baja">2 · Bajo</td>
+                            <td>Guardar las sesiones en MySQL (o usar JWT, que no depende del servidor).</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>401 contra 403 (prueba P-08)</h2>
+            <table>
+                <thead><tr><th>Situación</th><th>Código</th><th>¿Qué significa?</th></tr></thead>
+                <tbody>
+                    <tr><td>Sin sesión</td><td class="e401">401</td><td>El servidor no sabe quién eres: no hay sesión o ya venció.</td></tr>
+                    <tr><td>Con sesión de ana</td><td class="e403">403</td><td>Sabe que eres ana (alumno), pero la ruta es solo para admin.</td></tr>
+                    <tr><td>Con sesión de admin</td><td class="ok">200</td><td>Sabe quién eres y tienes permiso: entrega el reporte.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Respuestas de la guía</h2>
+            <p><strong>P-03 · ¿Por qué los dos casos dicen lo mismo?</strong> Si el mensaje cambiara cuando el usuario no
+                existe, un atacante podría averiguar qué cuentas existen y concentrar la fuerza bruta en ellas.</p>
+            <p><strong>P-04 · ¿La cookie dice «ana» o «alumno»?</strong> Ninguno. La cookie solo lleva el id de la sesión
+                firmado (<code>s%3A&lt;id&gt;.&lt;firma&gt;</code>). El usuario y el rol están en el servidor, en la columna
+                <code>data</code> de la tabla <code>sessions</code>.</p>
+            <p><strong>P-11 · Tres controles que limitan el daño de una cookie robada:</strong> <code>httpOnly</code> (el
+                JavaScript no la puede leer), expiración corta (<code>maxAge</code> + <code>vencida()</code>) y logout con
+                <code>destroy</code> (la sesión deja de existir en el servidor). Además <code>secure</code> en producción.</p>
+            <p><strong>P-12 · ¿Quién decide que la sesión venció con <code>rolling: false</code>?</strong> El servidor.
+                Aunque el <code>Expires</code> del <code>Set-Cookie</code> cambie en cada respuesta, la función
+                <code>vencida()</code> compara con la hora en que se creó la sesión y responde 401 «Tu sesión venció».</p>
+
+            <h3>Preguntas de cierre</h3>
+            <ol>
+                <li><strong>¿Qué guarda el navegador y qué el servidor?</strong> El navegador guarda solo la cookie
+                    <code>connect.sid</code> con el id firmado. El servidor guarda en MySQL el contenido: usuario, rol,
+                    visitas, hora de creación y vencimiento.</li>
+                <li><strong><code>regenerate</code></strong> evita la fijación de sesión: al iniciar sesión se crea un id nuevo,
+                    así el id que plantó el atacante nunca queda autenticado (P-13 vs P-14: <code>sesionAntes</code> ≠
+                    <code>sesionDespues</code> y el atacante recibe 401).</li>
+                <li><strong>¿Por qué MySQL?</strong> Porque las sesiones sobreviven a un reinicio (P-15) y, si hay dos
+                    servidores, ambos leen la misma tabla; en memoria cada proceso tendría sus propias sesiones.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Evidencia</h2>
+            <p>Sesión de ana: estado en verde, <code>document.cookie</code> vacío (httpOnly), 200 en perfil y 403 en la ruta de admin.</p>
+            <img src="evidencias/demo-sesiones-ana-403.png" alt="Demo de sesiones con la sesión de ana y la bitácora con 200 y 403">
+        </section>
+
+        <section>
+            <h2>Cómo correrlo</h2>
+<pre>cd "Tercer parcial/Semana12-Sesiones/demo-sesiones"
+npm install
+cp .env.example .env      # poner DB_PASSWORD de tu MySQL
+npm run bd                # crea la base demo_sesiones
+npm start                 # http://localhost:4600
+npm run probar            # 21 de 21 pruebas</pre>
+        </section>
+
+        <a class="regresar" href="../../index.html">← Regresar al portafolio</a>
+    </main>
+</body>
+</html>
